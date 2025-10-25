@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Scroll → fonds avec blur (aller/retour)</title>
+<style>
+  html,body{margin:0;padding:0;height:300vh;overflow-x:hidden;font-family:Arial;color:#fff}
+  /* Fond animé */
+  #bg{
+    position:fixed;inset:0;z-index:-1;
+    background-size:cover;background-position:center;background-repeat:no-repeat;
+    opacity:0;filter:blur(12px);
+    transition:opacity 0.8s ease, filter 0.8s ease;
+  }
+  .badge{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.6);padding:8px 12px;border-radius:8px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+<div class="badge" id="pct">0%</div>
+
+<script>
+(() => {
+  const pctTxt = document.getElementById('pct');
+  const bg = document.getElementById('bg');
+
+  const images = [
+    "https://thumbs.dreamstime.com/z/beau-d%C3%A9grad%C3%A9-plage-coucher-de-soleil-paysage-belle-avec-rose-violet-et-bleu-couleur-design-253694928.jpg?ct=jpeg",
+    "https://thumbs.dreamstime.com/z/plage-de-bord-de-mer-avec-concept-de-vacances-d-%C3%A9t%C3%A9-de-paysage-de-bord-de-la-mer-de-coucher-du-soleil-d-h-tel-de-villa-le-beau-96769815.jpg?ct=jpeg",
+    "https://thumbs.dreamstime.com/z/plage-d-hawa%C3%AF-15257897.jpg?ct=jpeg"
+  ];
+
+  // map % → index (0: [0..29], 1: [30..59], 2: [60..100])
+  const idxFromPercent = (p) => (p < 30 ? 0 : (p < 60 ? 1 : 2));
+
+  let currentIndex = -1;
+  let ticking = false;
+
+  function setBgInstant(idx){
+    bg.style.transition = 'none';
+    bg.style.backgroundImage = `url('${images[idx]}')`;
+    // force reflow pour prendre le style sans transition
+    void bg.offsetWidth;
+    bg.style.opacity = '1';
+    bg.style.filter = 'blur(0px)';
+    // réactive les transitions pour les prochains changements
+    requestAnimationFrame(() => {
+      bg.style.transition = 'opacity 0.8s ease, filter 0.8s ease';
+    });
+  }
+
+  function changeBackground(idx){
+    if (idx === currentIndex) return;
+    currentIndex = idx;
+    // blur + fade out puis swap + fade in
+    bg.style.opacity = '0';
+    bg.style.filter = 'blur(12px)';
+    setTimeout(() => {
+      bg.style.backgroundImage = `url('${images[idx]}')`;
+      bg.style.opacity = '1';
+      bg.style.filter = 'blur(0px)';
+    }, 200);
+  }
+
+  function percentScroll(){
+    const doc = document.documentElement;
+    const max = doc.scrollHeight - doc.clientHeight;
+    const p = max > 0 ? (doc.scrollTop / max) * 100 : 0;
+    return Math.round(Math.min(100, Math.max(0, p)));
+  }
+
+  function update(){
+    const val = percentScroll();
+    pctTxt.textContent = val + '%';
+    const target = idxFromPercent(val);
+    changeBackground(target);
+    ticking = false;
+  }
+
+  // scroll (montée/descente OK)
+  window.addEventListener('scroll', () => {
+    if (!ticking){ requestAnimationFrame(update); ticking = true; }
+  }, {passive:true});
+
+  // init (applique l’image correcte dès le chargement)
+  function init(){
+    const val = percentScroll();
+    const target = idxFromPercent(val);
+    currentIndex = target;
+    setBgInstant(target);
+  }
+
+  window.addEventListener('load', init);
+  window.addEventListener('resize', () => {  // garde la cohérence si hauteur change
+    const val = percentScroll();
+    const target = idxFromPercent(val);
+    if (target !== currentIndex) { changeBackground(target); }
+  });
+})();
+</script>
+</body>
+</html>
