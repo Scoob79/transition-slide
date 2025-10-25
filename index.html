@@ -3,102 +3,79 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Scroll → fonds avec blur (aller/retour)</title>
+<title>Transition fluide automatique</title>
 <style>
-  html,body{margin:0;padding:0;height:300vh;overflow-x:hidden;font-family:Arial;color:#fff}
-  /* Fond animé */
+  html,body{
+    margin:0;padding:0;
+    height:300vh; /* la hauteur sera adaptée dynamiquement */
+    overflow-x:hidden;
+    font-family:Arial,sans-serif;
+    color:#fff;
+  }
+
   #bg{
     position:fixed;inset:0;z-index:-1;
     background-size:cover;background-position:center;background-repeat:no-repeat;
     opacity:0;filter:blur(12px);
-    transition:opacity 0.8s ease, filter 0.8s ease;
+    transition:opacity 1s ease, filter 1s ease;
   }
-  .badge{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.6);padding:8px 12px;border-radius:8px;font-weight:700}
+
+  section{
+    height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    font-size:2rem;text-shadow:0 2px 8px rgba(0,0,0,0.8);
+  }
 </style>
 </head>
 <body>
 
 <div id="bg"></div>
-<div class="badge" id="pct">0%</div>
+
+<main id="slides">
+  <section data-bg="https://thumbs.dreamstime.com/z/beau-d%C3%A9grad%C3%A9-plage-coucher-de-soleil-paysage-belle-avec-rose-violet-et-bleu-couleur-design-253694928.jpg?ct=jpeg">Section 1</section>
+  <section data-bg="https://thumbs.dreamstime.com/z/plage-de-bord-de-mer-avec-concept-de-vacances-d-%C3%A9t%C3%A9-de-paysage-de-bord-de-la-mer-de-coucher-du-soleil-d-h-tel-de-villa-le-beau-96769815.jpg?ct=jpeg">Section 2</section>
+  <section data-bg="https://thumbs.dreamstime.com/z/plage-d-hawa%C3%AF-15257897.jpg?ct=jpeg">Section 3</section>
+</main>
 
 <script>
 (() => {
-  const pctTxt = document.getElementById('pct');
-  const bg = document.getElementById('bg');
-
-  const images = [
-    "https://thumbs.dreamstime.com/z/beau-d%C3%A9grad%C3%A9-plage-coucher-de-soleil-paysage-belle-avec-rose-violet-et-bleu-couleur-design-253694928.jpg?ct=jpeg",
-    "https://thumbs.dreamstime.com/z/plage-de-bord-de-mer-avec-concept-de-vacances-d-%C3%A9t%C3%A9-de-paysage-de-bord-de-la-mer-de-coucher-du-soleil-d-h-tel-de-villa-le-beau-96769815.jpg?ct=jpeg",
-    "https://thumbs.dreamstime.com/z/plage-d-hawa%C3%AF-15257897.jpg?ct=jpeg"
-  ];
-
-  // map % → index (0: [0..29], 1: [30..59], 2: [60..100])
-  const idxFromPercent = (p) => (p < 30 ? 0 : (p < 60 ? 1 : 2));
+  const bg = document.getElementById("bg");
+  const sections = document.querySelectorAll("#slides section[data-bg]");
+  const images = Array.from(sections).map(s => s.dataset.bg);
+  const n = images.length;
+  document.body.style.height = n * 100 + "vh"; // adapte la hauteur
 
   let currentIndex = -1;
-  let ticking = false;
-
-  function setBgInstant(idx){
-    bg.style.transition = 'none';
-    bg.style.backgroundImage = `url('${images[idx]}')`;
-    // force reflow pour prendre le style sans transition
-    void bg.offsetWidth;
-    bg.style.opacity = '1';
-    bg.style.filter = 'blur(0px)';
-    // réactive les transitions pour les prochains changements
-    requestAnimationFrame(() => {
-      bg.style.transition = 'opacity 0.8s ease, filter 0.8s ease';
-    });
-  }
 
   function changeBackground(idx){
-    if (idx === currentIndex) return;
+    if(idx === currentIndex) return;
     currentIndex = idx;
-    // blur + fade out puis swap + fade in
-    bg.style.opacity = '0';
-    bg.style.filter = 'blur(12px)';
-    setTimeout(() => {
+    bg.style.filter = "blur(12px)";
+    bg.style.opacity = "0";
+    setTimeout(()=>{
       bg.style.backgroundImage = `url('${images[idx]}')`;
-      bg.style.opacity = '1';
-      bg.style.filter = 'blur(0px)';
-    }, 200);
+      bg.style.opacity = "1";
+      bg.style.filter = "blur(0px)";
+    },300);
   }
 
   function percentScroll(){
     const doc = document.documentElement;
     const max = doc.scrollHeight - doc.clientHeight;
-    const p = max > 0 ? (doc.scrollTop / max) * 100 : 0;
-    return Math.round(Math.min(100, Math.max(0, p)));
+    return max>0 ? (doc.scrollTop / max) * 100 : 0;
   }
 
   function update(){
-    const val = percentScroll();
-    pctTxt.textContent = val + '%';
-    const target = idxFromPercent(val);
-    changeBackground(target);
-    ticking = false;
+    const p = percentScroll();
+    const segment = 100 / n;              // taille d'un segment (%)
+    const idx = Math.min(n-1, Math.floor(p / segment));
+    changeBackground(idx);
   }
 
-  // scroll (montée/descente OK)
-  window.addEventListener('scroll', () => {
-    if (!ticking){ requestAnimationFrame(update); ticking = true; }
-  }, {passive:true});
-
-  // init (applique l’image correcte dès le chargement)
-  function init(){
-    const val = percentScroll();
-    const target = idxFromPercent(val);
-    currentIndex = target;
-    setBgInstant(target);
-  }
-
-  window.addEventListener('load', init);
-  window.addEventListener('resize', () => {  // garde la cohérence si hauteur change
-    const val = percentScroll();
-    const target = idxFromPercent(val);
-    if (target !== currentIndex) { changeBackground(target); }
-  });
+  window.addEventListener("scroll", ()=>requestAnimationFrame(update), {passive:true});
+  window.addEventListener("load", ()=>{ update(); });
 })();
 </script>
+
 </body>
 </html>
