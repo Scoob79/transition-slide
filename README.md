@@ -107,7 +107,6 @@ section {
 🟢 Simple à personnaliser : ajoutez autant d’images que vous voulez, ajustez les plages de pourcentage selon vos besoins.
 
 =========================================================================
-=========================================================================
 
 🌊 Smooth Background Slide Transition (Blur + Scroll)
 
